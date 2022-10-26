@@ -1,6 +1,6 @@
 
 - 👀 I’m interested in AI
-- 🌱 I’m currently learning Tensorfloe
+- 🌱 I’m currently learning Tensorflow
 ..
 <!---
 MiaadKimiagari/MiaadKimiagari is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
