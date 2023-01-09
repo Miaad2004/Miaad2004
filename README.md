@@ -1,7 +1,7 @@
 <h1 align="center">Hi 👋, I'm Miaad Kimiagari</h1>
 <h3 align="center">I'm Studying Computer Engineering at Isfahan University</h3>
 
-<p align="left"> <a href="https://github.com/ryo-ma/github-profile-trophy"><img src="https://github-profile-trophy.vercel.app/?username=miaadkimiagari" alt="miaadkimiagari" /></a> </p>
+<p align="left"> <img src="https://komarev.com/ghpvc/?username=miaadkimiagari&label=Profile%20views&color=0e75b6&style=flat" alt="miaadkimiagari" /> </p>
 
 - 👀 I’m interested in **AI**
 
@@ -28,3 +28,5 @@
 <p><img align="left" src="https://github-readme-stats.vercel.app/api/top-langs?username=miaadkimiagari&show_icons=true&locale=en&layout=compact" alt="miaadkimiagari" /></p>
 
 <p>&nbsp;<img align="center" src="https://github-readme-stats.vercel.app/api?username=miaadkimiagari&show_icons=true&locale=en" alt="miaadkimiagari" /></p>
+
+<p><img align="center" src="https://github-readme-streak-stats.herokuapp.com/?user=miaadkimiagari&" alt="miaadkimiagari" /></p>
