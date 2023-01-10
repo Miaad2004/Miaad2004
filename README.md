@@ -1,6 +1,5 @@
-<h1 align="center">Hi 👋, I'm Miaad Kimiagari</h1>
-<h3 align="center">I'm Studying Computer Engineering at Isfahan University</h3>
-
+<!--<h1 align="center">Hi 👋, I'm Miaad Kimiagari</h1>-->
+<!--<h3 align="center">I'm Studying Computer Engineering at Isfahan University</h3>-->
 - 👀 I’m interested in **AI**
 
 - 🌱 I’m currently learning **Tensorflow**
