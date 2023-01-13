@@ -17,6 +17,7 @@
 <a href="https://kaggle.com/miaadkimiagari2004" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/kaggle.svg" alt="miaadkimiagari2004" height="30" width="40" /></a>
 <a href="https://medium.com/@mia.kimiagari" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/medium.svg" alt="@mia.kimiagari" height="30" width="40" /></a>
 <a href="https://www.leetcode.com/user3197d" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/leet-code.svg" alt="user3197d" height="30" width="40" /></a>
+<div class="badge-base LI-profile-badge" data-locale="en_US" data-size="medium" data-theme="dark" data-type="VERTICAL" data-vanity="miaad-kimiagari-" data-version="v1"><a class="badge-base__link LI-simple-link" href="https://ir.linkedin.com/in/miaad-kimiagari-?trk=profile-badge">Miaad Kimiagari</a></div>
 </p>
 
 <h3 align="left">Skills:</h3>
