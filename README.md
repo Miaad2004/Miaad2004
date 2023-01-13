@@ -1,3 +1,4 @@
+<script src="https://platform.linkedin.com/badges/js/profile.js" async defer type="text/javascript"></script>
 <!--<h1 align="center">Hi 👋, I'm Miaad Kimiagari</h1>-->
 <!--<h3 align="center">I'm Studying Computer Engineering at Isfahan University</h3>-->
 - 👀 I’m interested in **AI**
