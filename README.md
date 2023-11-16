@@ -1,9 +1,3 @@
-- 👀 I’m interested in **AI**
-
-- 🌱 I’m currently learning **Tensorflow**
-
-- 💬 Ask me about **C++, Keras**
-
 <h3 align="left">Contact info:</h3>
 <p align="left">
 <a href="https://linkedin.com/in/miaad-kimiagari-" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="miaad-kimiagari-" height="30" width="40" /></a>
