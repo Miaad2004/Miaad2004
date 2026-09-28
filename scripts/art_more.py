@@ -17,6 +17,24 @@ def panel(x, y, w, h, fill=PANEL, rx=8):
     return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{fill}" stroke="{BORDER}"/>'
 
 
+def ease_in_out(p):
+    """CSS ease-in-out, cubic-bezier(0.42, 0, 0.58, 1), solved for x = p."""
+    lo, hi = 0.0, 1.0
+    for _ in range(40):
+        u = (lo + hi) / 2
+        x = 3 * (1 - u) ** 2 * u * 0.42 + 3 * (1 - u) * u ** 2 * 0.58 + u ** 3
+        lo, hi = (u, hi) if x < p else (lo, u)
+    u = (lo + hi) / 2
+    return 3 * (1 - u) * u ** 2 + u ** 3
+
+
+def eased(stops, t):
+    for (ta, va), (tb, vb) in zip(stops, stops[1:]):
+        if ta <= t <= tb:
+            return va + (vb - va) * ease_in_out((t - ta) / (tb - ta))
+    return stops[-1][1]
+
+
 # ---------------------------------------------------------------------------------------------
 # Self-driving in Need for Speed
 # ---------------------------------------------------------------------------------------------
@@ -73,9 +91,13 @@ def card_selfdrive():
     needle = tl.kf([(t, f"transform:rotate({s * 120:.0f}deg)") for t, s in steer], timing="ease-in-out")
     parts.append(f'<g transform="translate({gx} {gy})"><g class="{needle}"><path d="M-2 0L0 -40L2 0Z" fill="{FG}"/></g>'
                  f'<circle r="4" fill="{FG}"/></g>')
-    for i, (t, s) in enumerate(steer[:-1]):
-        cls = tl.pulse(t, steer[i + 1][0]) if i else tl.kf([(0, "opacity:1"), (1.2, "opacity:1"), (1.201, "opacity:0"), (T, "opacity:0")])
-        parts.append(f'<g class="{cls}"{"" if i == 0 else HIDE}>{mono(gx, gy + 20, f"steer {s:+.2f}", 10, AMBER, anchor="middle")}</g>')
+    ticks = 30
+    for i in range(ticks):
+        t = i * T / ticks
+        cls = tl.pulse(t, t + T / ticks) if i else tl.kf([(0, "opacity:1"), (T / ticks, "opacity:1"),
+                                                            (T / ticks + 0.001, "opacity:0"), (T, "opacity:0")])
+        v = round(eased(steer, t), 2) + 0.0
+        parts.append(f'<g class="{cls}"{"" if i == 0 else HIDE}>{mono(gx, gy + 20, f"steer {v:+.2f}", 10, AMBER, anchor="middle")}</g>')
     css = (tl.css() + ".rush{animation:rush .5s linear infinite}.rush2{animation:rush2 .5s linear infinite}"
            "@keyframes rush{to{stroke-dashoffset:-12}}@keyframes rush2{to{stroke-dashoffset:-14}}")
     defs = ('<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b1a4a"/>'
@@ -102,13 +124,13 @@ def face(x, y, skin, hair, style):
 
 def card_siamese():
     T = 9.0
-    tl = Timeline(T, "s")
+    tl = Timeline(T, "s", end=6.8)
     half = T / 2
     parts = [face(44, 76, "#e8b98f", "#3a2a1c", "short")]
     b1 = face(44, 150, "#e3b48a", "#3a2a1c", "short")
     b2 = face(44, 150, "#c98e62", "#141414", "curly")
-    parts.append(f'<g class="{tl.show(0, half - 0.2, fade=0.2)}">{b1}</g>')
-    parts.append(f'<g class="{tl.show(half, T - 0.2, fade=0.2)}"{HIDE}>{b2}</g>')
+    parts.append(f'<g class="{tl.kf([(0, "opacity:1"), (half - 0.2, "opacity:1"), (half, "opacity:0"), (T, "opacity:0")])}"{HIDE}>{b2}</g>')
+    parts.append(f'<g class="{tl.show(half, T - 0.2, fade=0.2)}">{b1}</g>')
     # twin towers with shared weights
     for yy in (76, 150):
         for i, w in enumerate([10, 8, 6, 4]):
@@ -127,8 +149,8 @@ def card_siamese():
             f'<rect x="{186 + i * 9}" y="{y - 6}" width="8" height="12" rx="1.5" fill="{AMBER}" fill-opacity="{0.15 + 0.85 * v:.2f}"/>'
             for i, v in enumerate(vals)) + "</g>"
     parts.append(emb(base, 76))
-    parts.append(f'<g class="{tl.show(0.6, half - 0.2, fade=0.3)}">{emb(same, 150)}</g>')
-    parts.append(f'<g class="{tl.show(half + 0.6, T - 0.2, fade=0.3)}"{HIDE}>{emb(diff, 150)}</g>')
+    parts.append(f'<g class="{tl.show(0.6, half - 0.2, fade=0.3)}"{HIDE}>{emb(diff, 150)}</g>')
+    parts.append(f'<g class="{tl.show(half + 0.6, T - 0.2, fade=0.3)}">{emb(same, 150)}</g>')
     d1 = math.sqrt(sum((a - b) ** 2 for a, b in zip(base, same)))
     d2 = math.sqrt(sum((a - b) ** 2 for a, b in zip(base, diff)))
     # distance meter
@@ -137,12 +159,12 @@ def card_siamese():
     parts.append(f'<path d="M{MX + MW * 0.4} 100V116" stroke="{FG}" stroke-dasharray="2 2"/>')
     parts.append(mono(MX, 86, "distance", 9, MUTED))
     m = tl.kf([(0, "transform:translateX(0)"), (0.8, "transform:translateX(0)"),
-               (1.8, f"transform:translateX({MW * min(1, d1 / 2):.1f}px)"), (half - 0.2, f"transform:translateX({MW * min(1, d1 / 2):.1f}px)"),
-               (half + 0.8, "transform:translateX(0)"), (half + 1.8, f"transform:translateX({MW * min(1, d2 / 2):.1f}px)"),
-               (T - 0.2, f"transform:translateX({MW * min(1, d2 / 2):.1f}px)"), (T, "transform:translateX(0)")], timing="ease-out")
-    parts.append(f'<g class="{m}"><path d="M{MX} 100l-4 -6h8Z" fill="{FG}"/></g>')
-    parts.append(f'<g class="{tl.show(1.9, half - 0.2)}">{mono(MX, 134, f"d = {d1:.2f}", 10, FG)}{mono(MX, 150, "same person", 10, GREEN)}</g>')
-    parts.append(f'<g class="{tl.show(half + 1.9, T - 0.2)}"{HIDE}>{mono(MX, 134, f"d = {d2:.2f}", 10, FG)}{mono(MX, 150, "different", 10, CORAL)}</g>')
+               (1.8, f"transform:translateX({MW * min(1, d2 / 2):.1f}px)"), (half - 0.2, f"transform:translateX({MW * min(1, d2 / 2):.1f}px)"),
+               (half + 0.8, "transform:translateX(0)"), (half + 1.8, f"transform:translateX({MW * min(1, d1 / 2):.1f}px)"),
+               (T - 0.2, f"transform:translateX({MW * min(1, d1 / 2):.1f}px)"), (T, "transform:translateX(0)")], timing="ease-in-out")
+    parts.append(f'<g class="{m}" style="transform:translateX({MW * min(1, d1 / 2):.1f}px)"><path d="M{MX} 100l-4 -6h8Z" fill="{FG}"/></g>')
+    parts.append(f'<g class="{tl.show(1.9, half - 0.2)}"{HIDE}>{mono(MX, 134, f"d = {d2:.2f}", 10, FG)}{mono(MX, 150, "different", 10, CORAL)}</g>')
+    parts.append(f'<g class="{tl.show(half + 1.9, T - 0.2)}">{mono(MX, 134, f"d = {d1:.2f}", 10, FG)}{mono(MX, 150, "same person", 10, GREEN)}</g>')
     defs = grad("dist", MX, MX + MW, (GREEN, YELLOW, CORAL))
     return card("~/siamese-faces", "One-shot face recognition", "a Siamese network in TensorFlow",
                 *JUPYTER, "\n".join(parts), tl.css(),
@@ -154,7 +176,7 @@ def card_siamese():
 # ---------------------------------------------------------------------------------------------
 def card_packets():
     T = 9.0
-    tl = Timeline(T, "k")
+    tl = Timeline(T, "k", end=5.4)
     layers = [("DNS", "A? github.com  id=0x1f3a", "#2d6a4f", GREEN),
               ("UDP", "sport=50712 dport=53", "#1d4e89", BLUE),
               ("IPv4", "ttl=64 proto=17 > 1.1.1.1", "#5a3d8a", VIOLET),
@@ -215,7 +237,7 @@ def card_puzzle():
         s[b], s[tgt] = s[tgt], s[b]
         b = tgt
     T = 10.0
-    tl = Timeline(T, "z")
+    tl = Timeline(T, "z", end=7.4)
     C, X0, Y0 = 33, 36, 48
     pos = {t: i for i, t in enumerate(start) if t}
     tiles = {t: [(0, pos[t])] for t in pos}
@@ -270,7 +292,7 @@ def candy(kind):
 
 def card_candy():
     T = 7.0
-    tl = Timeline(T, "c")
+    tl = Timeline(T, "c", end=3.2)
     grid = ["gpbyr", "ybrgp", "rgpyg", "bbybr", "pryby"]
     grid = [list(row) for row in grid]
     C, X0, Y0 = 27, 34, 48
@@ -351,7 +373,7 @@ def card_candy():
 # ---------------------------------------------------------------------------------------------
 def card_hogwarts():
     T = 8.0
-    tl = Timeline(T, "w")
+    tl = Timeline(T, "w", end=3.1)
     houses = [("Gryffindor", "#ae0001", "#eeba30", 482), ("Slytherin", "#1a472a", "#aaaaaa", 472),
               ("Ravenclaw", "#222f5b", "#946b2d", 426), ("Hufflepuff", "#ecb939", "#372e29", 352)]
     parts = []
@@ -367,15 +389,16 @@ def card_hogwarts():
         top, H = 142, 34
         frac = pts / 500
         grow = tl.kf([(0, "transform:scaleY(0)"), (0.4 + i * 0.15, "transform:scaleY(0)"), (2.4 + i * 0.15, f"transform:scaleY({frac:.3f})"),
-                      (T - 0.5, f"transform:scaleY({frac:.3f})"), (T - 0.2, "transform:scaleY(0)"), (T, "transform:scaleY(0)")], timing="ease-out")
+                      (T - 0.5, f"transform:scaleY({frac:.3f})"), (T - 0.2, "transform:scaleY(0)"), (T, "transform:scaleY(0)")], timing="ease-in-out")
         parts.append(f'<rect x="{x + 28}" y="{top}" width="30" height="{H}" rx="4" fill="#161d28" stroke="{BORDER}"/>')
         parts.append(f'<rect x="{x + 30}" y="{top + 2}" width="26" height="{H - 4}" rx="3" fill="{c2 if i != 3 else c1}" class="{grow}" '
                      f'style="transform-origin:0 {top + H - 2}px;transform:scaleY({frac:.3f})"/>')
-        for k in range(6):
-            v = round(pts * (k / 5) ** 0.7)
-            on = 0.4 + i * 0.15 + k * 0.4
-            last = k == 5
-            cls = tl.show(on, T - 0.5, fade=0.01) if last else tl.pulse(on, on + 0.4)
+        steps = 24
+        for k in range(steps + 1):
+            v = round(pts * ease_in_out(k / steps))
+            on = 0.4 + i * 0.15 + k * 2.0 / steps
+            last = k == steps
+            cls = tl.show(on, T - 0.5, fade=0.01) if last else tl.pulse(on, on + 2.0 / steps)
             parts.append(f'<g class="{cls}"{"" if last else HIDE}>{mono(x + 43, top + H + 12, str(v), 10, AMBER if i == 0 else MUTED, anchor="middle")}</g>')
     defs = "".join(f'<linearGradient id="h{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{c1}"/>'
                    f'<stop offset="1" stop-color="{c1}" stop-opacity="0.55"/></linearGradient>' for i, (_, c1, _, _) in enumerate(houses))
@@ -388,7 +411,7 @@ def card_hogwarts():
 # ---------------------------------------------------------------------------------------------
 def card_social():
     T = 8.0
-    tl = Timeline(T, "n")
+    tl = Timeline(T, "n", end=5.6)
     people = {"you": (60, 108), "ali": (140, 62), "sara": (150, 150), "reza": (212, 104), "nima": (82, 160),
               "mina": (276, 60), "omid": (300, 140), "tara": (372, 92), "kian": (228, 162)}
     edges = [("you", "ali"), ("you", "sara"), ("you", "reza"), ("you", "nima"), ("ali", "mina"), ("reza", "mina"),
@@ -441,7 +464,7 @@ def card_social():
 # ---------------------------------------------------------------------------------------------
 def card_linuxfs():
     T = 10.0
-    tl = Timeline(T, "x")
+    tl = Timeline(T, "x", end=7.0)
     cmds = [("mkdir home", [("home", 1)]), ("mkdir home/miaad", [("miaad", 2)]), ("cd home/miaad", []),
             ("mkdir projects", [("projects", 3)]), ("touch notes.txt", [("notes.txt", 3)]),
             ("mkdir projects/ai", [("ai", 4)]), ("tree /", [])]
@@ -518,7 +541,7 @@ def card_calc():
     tokens = list("3+4*(2-1)")
     trace = shunting_yard(tokens)
     T = 11.0
-    tl = Timeline(T, "q")
+    tl = Timeline(T, "q", end=6.9)
     parts = [f'<rect x="20" y="48" width="118" height="138" rx="10" fill="#1a2130" stroke="{BORDER}"/>',
              f'<rect x="28" y="56" width="102" height="28" rx="4" fill="#0c1a14"/>']
     keys = ["7", "8", "9", "/", "4", "5", "6", "*", "1", "2", "3", "-", "(", "0", ")", "+"]
@@ -549,7 +572,7 @@ def card_calc():
         parts.append("".join(g))
         if tok:
             kx, ky = kpos[tok]
-            press = tl.kf([(0, "opacity:0"), (on, "opacity:0"), (on + 0.02, "opacity:0.6"), (on + 0.3, "opacity:0"), (T, "opacity:0")])
+            press = tl.kf([(0, "opacity:0"), (on, "opacity:0"), (on + 0.04, "opacity:0.3"), (on + 0.35, "opacity:0"), (T, "opacity:0")])
             parts.append(f'<rect x="{kx}" y="{ky}" width="22" height="19" rx="4" fill="#ffffff" class="{press}" style="opacity:0"/>')
     # evaluate RPN
     rpn = trace[-1][1]
@@ -574,7 +597,7 @@ def card_calc():
 def card_bst():
     keys = [50, 30, 70, 20, 40, 60, 80, 35, 65]
     T = 10.0
-    tl = Timeline(T, "b")
+    tl = Timeline(T, "b", end=8.2)
     pos, parent = {}, {}
     xs = {1: (210, 120), 2: (80, 60), 3: (40, 20), 4: (20, 10)}
     root = None
@@ -650,18 +673,19 @@ def card_kmeans():
             break
         cents = new
     T = 9.0
-    tl = Timeline(T, "m")
-    cols = [CORAL, GREEN, BLUE]
     step = 0.9
+    tl = Timeline(T, "m", end=0.3 + len(iters) * step + 0.3)
+    cols = [CORAL, GREEN, BLUE]
     parts = []
+    dots = tl.frames([0.3 + i * step for i in range(len(iters))], 0.35)
     for i, (cs, lab) in enumerate(iters):
         on = 0.3 + i * step
         last = i == len(iters) - 1
         off = on + step if not last else T - 0.3
+        parts.append(f'<g class="{dots[i][0]}"{dots[i][1]}>' + "".join(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.6" fill="{cols[l]}" opacity="0.85"/>' for (x, y), l in zip(pts, lab)) + "</g>")
         cls = tl.pulse(on, off) if not last else tl.show(on, off, fade=0.01)
         g = [f'<g class="{cls}"{"" if last else HIDE}>']
-        for (x, y), l in zip(pts, lab):
-            g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.6" fill="{cols[l]}" opacity="0.85"/>')
         g.append(mono(24, 62, f"iter {i + 1}", 11, AMBER))
         inertia = sum((x - cs[l][0]) ** 2 + (y - cs[l][1]) ** 2 for (x, y), l in zip(pts, lab))
         g.append(mono(24, 78, f"inertia {inertia / 1000:.1f}k", 10, MUTED))
@@ -726,7 +750,7 @@ def card_sudoku():
     board = [int(c) for c in PUZZLE]
     order, tries = solve(board)
     T = 9.0
-    tl = Timeline(T, "u")
+    tl = Timeline(T, "u", end=6.2)
     C, X0, Y0 = 15, 30, 48
     parts = [f'<rect x="{X0}" y="{Y0}" width="{9 * C}" height="{9 * C}" fill="#101722"/>']
     for i in range(10):
@@ -747,12 +771,11 @@ def card_sudoku():
                 timing=f"steps(1,end)")
     parts.append(f'<rect x="{X0}" y="{Y0}" width="{C}" height="{C}" fill="{AMBER}" fill-opacity="0.25" stroke="{AMBER}" class="{cur}" style="opacity:0"/>')
     SX = 190
-    for k in range(10):
-        on = 0.4 + k * 0.54
-        last = k == 9
-        filled = round(len(order) * (k + 1) / 10)
-        cls = tl.pulse(on, on + 0.54) if not last else tl.show(on, T - 0.3, fade=0.01)
-        parts.append(f'<g class="{cls}"{"" if last else HIDE}>{mono(SX, 80, f"filled {filled:2d}/{len(order)}", 11, FG)}</g>')
+    for k in range(len(order)):
+        on = 0.4 + k * dt
+        last = k == len(order) - 1
+        cls = tl.pulse(on, on + dt) if not last else tl.show(on, T - 0.3, fade=0.01)
+        parts.append(f'<g class="{cls}"{"" if last else HIDE}>{mono(SX, 80, f"filled {k + 1:2d}/{len(order)}", 11, FG)}</g>')
     parts.append(mono(SX, 102, f"placements tried: {tries}", 10, MUTED))
     parts.append(mono(SX, 118, "depth-first backtracking", 10, MUTED))
     parts.append(f'<g class="{tl.show(0.4 + len(order) * dt + 0.1, T - 0.3)}">{mono(SX, 146, "solved", 12, GREEN, weight="700")}</g>')

@@ -135,36 +135,43 @@ def life_step(cells, cols, rows):
     return {k for k, n in count.items() if n == 3 or (n == 2 and k in cells)}
 
 
-def life_frames(g_id, x0, y0, cols, rows, fs, lh, gens, fps, hold, tl):
-    """Frames as text rows; newborn '@', alive '#', and a fading '+' '.' trail where cells just died."""
+def life_frames(g_id, x0, y0, cols, rows, fs, lh, gens, fps, hold, rest=0.8):
+    """Frames as text rows; newborn '@', alive '#', and a fading '+' '.' trail where cells just died.
+
+    Each generation blends into the next, and the last one melts back into the seed, so the loop never blinks.
+    Returns (svg, timeline).
+    """
     cw = fs * CHAR
     cells = life_seed(cols, rows)
     age, gone = {}, {}
-    out = [f'<g fill="url(#{g_id})">']
-    t = 0.3
+    grids = []
     for gen in range(gens):
         grid = [[" "] * cols for _ in range(rows)]
         for (x, y), d in gone.items():
             grid[y][x] = "+" if d == 1 else "."
         for c in cells:
             grid[c[1]][c[0]] = "@" if age.get(c, 0) < 1 else "#"
-        dur = hold if gen == 0 else 1 / fps
-        cls = tl.pulse(t, t + dur)
-        out.append(f'<g class="{cls}"{"" if gen == 0 else HIDE}>')
-        for r, row in enumerate(grid):
-            s = "".join(row).rstrip()
-            if s.strip():
-                lead = len(s) - len(s.lstrip())
-                out.append(mono(x0 + lead * cw, y0 + r * lh, s.lstrip(), fs, fill="inherit"))
-        out.append("</g>")
-        t += dur
+        grids.append(grid)
         nxt = life_step(cells, cols, rows)
         gone = {k: d + 1 for k, d in gone.items() if d < 2 and k not in nxt}
         gone.update({c: 1 for c in cells - nxt})
         age = {c: age.get(c, 0) + 1 for c in nxt & cells}
         cells = nxt
+    starts = [0] + [hold + k / fps for k in range(gens - 1)]
+    tl = Timeline(starts[-1] + rest, "g")
+    out = [f'<g fill="url(#{g_id})" font-size="{fs}">']
+    for grid, (cls, style) in zip(grids, tl.frames(starts, 1 / fps, wrap=0.6)):
+        out.append(f'<g class="{cls}"{style}>')
+        for r, row in enumerate(grid):
+            s_ = "".join(row).rstrip()
+            if s_.strip():
+                lead = len(s_) - len(s_.lstrip())
+                body = s_.lstrip()
+                out.append(f'<text x="{x0 + lead * cw:.1f}" y="{y0 + r * lh:.1f}" textLength="{len(body) * cw:.1f}" '
+                           f'lengthAdjust="spacingAndGlyphs">{esc(body)}</text>')
+        out.append("</g>")
     out.append("</g>")
-    return "".join(out), t
+    return "".join(out), tl
 
 
 # ---------------------------------------------------------------------------------------------
@@ -173,7 +180,7 @@ def life_frames(g_id, x0, y0, cols, rows, fs, lh, gens, fps, hold, tl):
 def footer():
     W, H = 880, 120
     T = 12.0
-    tl = Timeline(T, "e")
+    tl = Timeline(T, "e", end=2.2)
     cmd = "exit"
     x = 28 + 2 * 14 * CHAR
     cover = tl.kf([(0, "transform:translateX(0)"), (0.6, "transform:translateX(0)"),
@@ -217,9 +224,9 @@ SOCIAL = [
 
 def social(i, key, name, handle, color, glyph):
     W, H = 184, 56
-    T = 7.0
-    tl = Timeline(T, "s")
     at = 0.6 + i * 0.3
+    T = 7.0
+    tl = Timeline(T, "s", end=at + 1.4)
     glow = tl.kf([(0, "stroke-opacity:0"), (at, "stroke-opacity:0"), (at + 0.35, "stroke-opacity:1"),
                   (at + 1.3, "stroke-opacity:0"), (T, "stroke-opacity:0")], timing="ease-in-out")
     shine = tl.kf([(0, "transform:translateX(-80px)"), (at, "transform:translateX(-80px)"),

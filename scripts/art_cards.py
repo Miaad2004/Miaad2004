@@ -50,7 +50,7 @@ def flower(i, k, base, tip, back, center, rot, rng):
 
 def card_dcgan():
     T = 8.0
-    tl = Timeline(T, "g")
+    tl = Timeline(T, "g", end=4.2)
     rng = rng_(7)
     S, gap = 122, 11
     x0, y0 = 16, 50
@@ -183,7 +183,7 @@ def wipe(tl, x, y, w, h, t_on, t_off, color, cid):
 # ---------------------------------------------------------------------------------------------
 def card_pix2pix():
     T = 8.0
-    tl = Timeline(T, "p")
+    tl = Timeline(T, "p", end=4.6)
     L, R, Y, S = 26, 274, 50, 122
     draw = tl.kf([(0, "stroke-dashoffset:1"), (0.3, "stroke-dashoffset:1"), (2.4, "stroke-dashoffset:0"),
                   (T - 0.5, "stroke-dashoffset:0"), (T - 0.2, "stroke-dashoffset:1"), (T, "stroke-dashoffset:1")],
@@ -234,7 +234,7 @@ def slab(x, y, w, h, d, front, top, side):
 
 def card_unet():
     T = 8.0
-    tl = Timeline(T, "u")
+    tl = Timeline(T, "u", end=4.9)
     L, R, Y, S = 16, 282, 52, 122
     parts = [f'<defs><clipPath id="pl"><rect x="{L}" y="{Y}" width="{S}" height="{S}" rx="6"/></clipPath>'
              f'<clipPath id="pr"><rect x="{R}" y="{Y}" width="{S}" height="{S}" rx="6"/></clipPath></defs>']
@@ -306,7 +306,7 @@ def card_frozen_lake():
         if LAKE[s // 4][s % 4] == "G" and 8 <= len(path) <= 12:
             break
     T = 12.0
-    tl = Timeline(T, "f")
+    tl = Timeline(T, "f", end=10.8)
     TW, TH, TD = 58, 29, 9
     ox, oy = 256, 54
 
@@ -328,42 +328,46 @@ def card_frozen_lake():
                      f'<path d="M{cx + TW / 2:.1f} {cy:.1f}L{cx:.1f} {cy + TH / 2:.1f}V{cy + TH / 2 + TD:.1f}L{cx + TW / 2:.1f} {cy + TD:.1f}Z" fill="#3b6680"/>')
         if t == "H":
             parts.append(f'<path d="{diamond(cx, cy)}" fill="url(#water)"/>')
-            rip = tl.kf([(0, "transform:scale(0.3);opacity:0.8"), (2.0, "transform:scale(1);opacity:0"),
-                         (2.01, "transform:scale(0.3);opacity:0.8"), (4.0, "transform:scale(1);opacity:0"),
-                         (4.01, "transform:scale(0.3);opacity:0.8"), (6.0, "transform:scale(1);opacity:0"),
-                         (6.01, "transform:scale(0.3);opacity:0.8"), (8.0, "transform:scale(1);opacity:0"),
-                         (8.01, "transform:scale(0.3);opacity:0.8"), (10.0, "transform:scale(1);opacity:0"),
-                         (10.01, "transform:scale(0.3);opacity:0.8"), (12.0, "transform:scale(1);opacity:0")])
+            stops, t = [(0, "transform:scale(1);opacity:0")], (s_ * 0.37) % 2.4
+            while t + 2.4 <= tl.end:
+                stops += [(t, "transform:scale(0.3);opacity:0"), (t + 0.2, "transform:scale(0.4);opacity:0.7"),
+                          (t + 2.4, "transform:scale(1);opacity:0")]
+                t += 2.4
+            rip = tl.kf(stops, timing="ease-out")
             parts.append(f'<g transform="translate({cx:.1f} {cy:.1f})"><ellipse rx="18" ry="9" fill="none" stroke="#9fd3ff" '
-                         f'stroke-width="0.8" class="{rip}" style="animation-delay:{-s_ * 0.37:.2f}s"/></g>')
+                         f'stroke-width="0.8" class="{rip}" style="opacity:0"/></g>')
         else:
             parts.append(f'<path d="{diamond(cx, cy)}" fill="url(#ice)"/>'
                          f'<path d="M{cx - 12:.1f} {cy - 2:.1f}l7 2 4 -3 6 4" stroke="#ffffff" stroke-width="0.6" fill="none" opacity="0.5"/>')
         if t == "G":
             parts.append(f'<path d="{diamond(cx, cy, 0.8)}" fill="{GREEN}" opacity="0.35"/>'
                          f'<path d="M{cx:.1f} {cy:.1f}V{cy - 24:.1f}" stroke="#e6edf3" stroke-width="1.4"/>'
-                         f'<path d="M{cx:.1f} {cy - 24:.1f}l13 4 -13 4Z" fill="{GREEN}" class="flag"/>')
+                         f'<path d="M{cx:.1f} {cy - 24:.1f}l13 4 -13 4Z" fill="{GREEN}"/>')
     # value sweeps (real numbers)
     sweeps = [1, 2, 3, 5, 8, 13, 30, 200]
     vmax = max(history[-1])
-    for n, it in enumerate(sweeps):
-        on = 0.4 + n * 0.55
+    starts = [0.4 + n * 0.55 for n in range(len(sweeps))]
+    fade_out = tl.kf([(0, "opacity:1"), (5.2, "opacity:1"), (5.6, "opacity:0"), (T, "opacity:0")])
+    fills, labels = [f'<g class="{fade_out}"><g class="{tl.show(0.4, fade=0.3)}">'], [f'<g class="{fade_out}">']
+    # the heat under each tile blends from sweep to sweep; the numbers tick
+    for n, (it, (cls, rest)) in enumerate(zip(sweeps, tl.frames(starts, 0.35))):
+        g = [f'<g class="{cls}"{rest}>']
+        for s_ in range(16):
+            if not terminal(s_):
+                cx, cy = iso(s_ % 4, s_ // 4)
+                g.append(f'<path d="{diamond(cx, cy + TH / 2, 0.86)}" fill="{AMBER}" fill-opacity="{0.1 + 0.8 * history[it][s_] / vmax:.2f}"/>')
+        fills.append("".join(g) + "</g>")
         last = n == len(sweeps) - 1
-        cls = tl.show(on, 5.2, fade=0.05) if last else tl.pulse(on, on + 0.55)
+        cls = tl.show(starts[n], fade=0.01) if last else tl.pulse(starts[n], starts[n + 1])
         g = [f'<g class="{cls}"{"" if last else HIDE}>']
         for s_ in range(16):
-            if terminal(s_):
-                continue
-            c, r_ = s_ % 4, s_ // 4
-            cx, cy = iso(c, r_)
-            cy += TH / 2
-            v = history[it][s_]
-            g.append(f'<path d="{diamond(cx, cy, 0.86)}" fill="{AMBER}" fill-opacity="{0.1 + 0.8 * v / vmax:.2f}"/>')
-            g.append(mono(cx, cy + 3, f"{v:.2f}"[1:], 8.5, "#0b0f14", anchor="middle", weight="700"))
+            if not terminal(s_):
+                cx, cy = iso(s_ % 4, s_ // 4)
+                g.append(mono(cx, cy + TH / 2 + 3, f"{history[it][s_]:.2f}"[1:], 8.5, "#0b0f14", anchor="middle", weight="700"))
         g.append(mono(22, 62, f"sweep {it:>3}", 10, AMBER))
         g.append(mono(22, 78, f"V(S) {history[it][0]:.3f}", 10, FG))
-        g.append("</g>")
-        parts.append("".join(g))
+        labels.append("".join(g) + "</g>")
+    parts.append("".join(fills) + "</g></g>" + "".join(labels) + "</g>")
     parts.append(mono(22, 94, "gamma 0.99", 10, MUTED))
     # greedy policy arrows on the ice
     arrows = [f'<g class="{tl.show(5.0, fade=0.3)}">']
@@ -406,8 +410,7 @@ def card_frozen_lake():
     parts.append(f'<g class="{agent}" style="transform:translate({ex:.1f}px,{ey:.1f}px)">'
                  f'<ellipse cx="0" cy="1" rx="7" ry="3.5" fill="#000" opacity="0.35"/>'
                  f'<circle cx="0" cy="-7" r="7" fill="url(#ball)"/></g>')
-    css = tl.css() + ".flag{transform-box:fill-box;transform-origin:left center;animation:wave 1.2s ease-in-out infinite}" \
-                     "@keyframes wave{50%{transform:scaleX(0.75) skewY(4deg)}}"
+    css = tl.css()
     defs = ('<linearGradient id="ice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8f7ff"/>'
             '<stop offset="1" stop-color="#9cc9e2"/></linearGradient>'
             '<radialGradient id="water"><stop offset="0" stop-color="#03101c"/><stop offset="1" stop-color="#0f3552"/></radialGradient>'
@@ -424,7 +427,7 @@ def card_frozen_lake():
 # ---------------------------------------------------------------------------------------------
 def card_ftp():
     T = 10.0
-    tl = Timeline(T, "t")
+    tl = Timeline(T, "t", end=7.0)
     CX, SX = 64, 356
     msgs = [(">", "SYN", "49152 > 21 [SYN] seq=0 win=64240 mss=1460"),
             ("<", "SYN, ACK", "21 > 49152 [SYN, ACK] seq=0 ack=1 win=65160"),
@@ -483,7 +486,7 @@ def card_ftp():
 # ---------------------------------------------------------------------------------------------
 def card_llm_home():
     T = 10.0
-    tl = Timeline(T, "l")
+    tl = Timeline(T, "l", end=4.4)
     parts = []
     msg = "lights on in the living room?"
     fs = 9.5
@@ -561,8 +564,8 @@ def card_llm_home():
 # ASCII animation: a high-resolution shaded donut with a frame timeline
 # ---------------------------------------------------------------------------------------------
 def card_ascii():
-    n = 30
-    tl = Timeline(n / 12, "a")
+    n, fps = 48, 24
+    tl = Timeline(n / fps, "a")
     cols, rows, fs, lh = 62, 31, 6.2, 4.75
     cw = fs * CHAR
     x0, y0 = 18, 50
@@ -584,12 +587,12 @@ def card_ascii():
         cls = tl.pulse(i * tl.T / n, (i + 1) * tl.T / n)
         out.append(f'<g class="{cls}"{HIDE if i else ""}>{mono(rx, 90, f"frame {i + 1:02d} / {n}", 10, AMBER)}</g>')
     # timeline strip: one tick per frame and a playhead
-    sw = 128
+    sw = 144
     for i in range(n):
         out.append(f'<rect x="{rx + i * sw / n:.1f}" y="104" width="{sw / n - 1:.1f}" height="12" rx="1" fill="#1a2230"/>')
     head = tl.kf([(0, "transform:translateX(0)"), (tl.T, f"transform:translateX({sw}px)")], timing=f"steps({n},end)")
     out.append(f'<rect x="{rx}" y="102" width="{sw / n - 1:.1f}" height="16" rx="1" fill="{AMBER}" class="{head}"/>')
-    out.append(mono(rx, 136, "12 fps  loop", 10, MUTED))
+    out.append(mono(rx, 136, f"{fps} fps  loop", 10, MUTED))
     defs = grad("dg", x0, x0 + cols * cw, (AMBER, CORAL, VIOLET), y1=y0, y2=y0 + rows * lh) + glow("bloom", 1.1)
     return card("~/ascii-animation", "ASCII Animation Generator", "an object-oriented C++ engine for console animation",
                 "C++", "#f34b7d", "\n".join(out), tl.css(),
@@ -632,12 +635,12 @@ def card_pong():
     # sparks at every paddle hit
     r = rng_(5)
     for t, x, y, sgn in hit_events:
-        for j in range(7):
+        for j in range(4):
             ang = r.uniform(-70, 70)
             dist = r.uniform(10, 24)
             dx, dy = sgn * dist * math.cos(math.radians(ang)), dist * math.sin(math.radians(ang))
             sp = tl.kf([(0, "transform:translate(0px,0px);opacity:0"), (max(0, t - 0.001), "transform:translate(0px,0px);opacity:0"),
-                        (t, "transform:translate(0px,0px);opacity:1"),
+                        (t, "transform:translate(0px,0px);opacity:0.6"),
                         (t + 0.45, f"transform:translate({dx:.1f}px,{dy:.1f}px);opacity:0"), (T, f"transform:translate({dx:.1f}px,{dy:.1f}px);opacity:0")],
                        timing="ease-out")
             col = "#5ef2ff" if sgn > 0 else "#ff5ec8"

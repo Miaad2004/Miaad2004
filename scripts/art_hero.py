@@ -6,9 +6,9 @@ embossed, then quantised onto a fine ASCII ramp. Needs numpy + Pillow (only when
 import math
 import os
 
-from svgkit import BORDER, CHAR, FG, GREEN, HIDE, MUTED, Timeline, glow, grad, mono, window
+from svgkit import BORDER, CHAR, FG, HIDE, MUTED, Timeline, esc, glow, grad, mono, window
 
-RAMP = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
+RAMP = " .'`^,:;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW8%B@$"
 FONTS = [
     os.environ.get("HERO_FONT", ""),  # set this to any bold .ttf to override
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # what the committed hero was rendered with
@@ -73,6 +73,19 @@ def to_rows(v):
     return out
 
 
+def rows_svg(v, x0, y0, cw, lh):
+    """One <text> per non-empty row; size and fill come from the enclosing group."""
+    out = []
+    for r, line in enumerate(to_rows(v)):
+        t = line.rstrip()
+        if t.strip():
+            lead = len(t) - len(t.lstrip())
+            body = t.lstrip()
+            out.append(f'<text x="{x0 + lead * cw:.1f}" y="{y0 + r * lh:.1f}" textLength="{len(body) * cw:.1f}" '
+                       f'lengthAdjust="spacingAndGlyphs">{esc(body)}</text>')
+    return "".join(out)
+
+
 def hero():
     import numpy as np
 
@@ -89,61 +102,45 @@ def hero():
         e = (e + 0.5 * (np.roll(e, 1, 1) + np.roll(e, -1, 1)) + 0.3 * (np.roll(e, 1, 0) + np.roll(e, -1, 0))) / 2.0
         return e / e.std()
 
-    K = 18
-    step = 0.17
-    T = 12.0
-    tl = Timeline(T, "h")
+    # 28 sampling steps, each blending into the next, so the name condenses smoothly instead of flickering
+    K, t0, step = 28, 0.35, 0.085
+    starts = [0] + [t0 + k * step for k in range(1, K)]
+    done = starts[-1] + step
+    tl = Timeline(done + 1.2, "h", end=done + 1.2)
     x0v = x_final * 2 - 1
     eps = field()
-    parts = [f'<g fill="url(#hg)">']
-    for k in range(K):
-        s = k / (K - 1)
-        abar = math.sin(s * math.pi / 2) ** 2  # signal fraction as t runs 1000 -> 0
-        eps = 0.85 * eps + 0.53 * field()
+    parts = [f'<g fill="url(#hg)" font-size="{fs}">']
+    for k, (cls, rest) in enumerate(tl.frames(starts, step)):
+        s_ = k / (K - 1)
+        abar = math.sin(s_ * math.pi / 2) ** 2  # signal fraction as t runs 1000 -> 0
+        eps = 0.94 * eps + 0.34 * field()
         eps /= eps.std()
-        xt = math.sqrt(abar) * x0v + math.sqrt(1 - abar) * eps * 0.9
-        v = np.clip((xt + 1) / 2, 0, 1)
-        if k == K - 1:
-            v = x_final
-        on = 0.3 + k * step
-        off = on + step if k < K - 1 else T - 0.3
-        if k == 0:
-            cls = tl.kf([(0, "opacity:1"), (off, "opacity:1"), (off + 0.001, "opacity:0"),
-                         (T - 0.3, "opacity:0"), (T - 0.299, "opacity:1"), (T, "opacity:1")])
-        else:
-            cls = tl.pulse(on, off)
-        attrs = ' filter="url(#bloom)"' if k == K - 1 else ""
-        parts.append(f'<g class="{cls}"{"" if k == K - 1 else HIDE}{attrs}>')
-        for r, line in enumerate(to_rows(v)):
-            t = line.rstrip()
-            if t.strip():
-                lead = len(t) - len(t.lstrip())
-                parts.append(mono(x0 + lead * cw, y0 + r * lh, t.lstrip(), fs, fill="inherit"))
-        parts.append("</g>")
+        v = x_final if k == K - 1 else np.clip((math.sqrt(abar) * x0v + math.sqrt(1 - abar) * eps * 0.9 + 1) / 2, 0, 1)
+        bloom = ' filter="url(#bloom)"' if k == K - 1 else ""
+        parts.append(f'<g class="{cls}"{rest}{bloom}>{rows_svg(v, x0, y0, cw, lh)}</g>')
     parts.append("</g>")
 
-    # tqdm-style progress, timed to the animation itself
+    # tqdm-style progress, ticking with the sampler
     by = y0 + rows * lh + 22
     parts.append(f'<path d="M{x0:.1f} {by - 14}H{W - x0:.1f}" stroke="{BORDER}"/>')
-    total_time = (K - 1) * step
+    total_time = done - t0
+    rate = 1000 / total_time
     for k in range(K):
-        s = k / (K - 1)
-        done = round(1000 * s)
-        el = s * total_time
-        rate = 1000 / total_time
-        rem = (1000 - done) / rate
-        blocks = s * 24
-        bar = "█" * int(blocks) + (" ▏▎▍▌▋▊▉"[int((blocks % 1) * 8)] if blocks < 24 else "")
-        bar = bar.ljust(24)
-        line = f"sampling {int(s * 100):3d}%|{bar}| {done:4d}/1000 [00:{int(el):02d}<00:{int(math.ceil(rem)):02d}, {rate:.2f}it/s]"
-        on = 0.3 + k * step
-        off = on + step if k < K - 1 else T - 0.3
-        cls = tl.pulse(on, off) if k else tl.kf([(0, "opacity:1"), (off, "opacity:1"), (off + 0.001, "opacity:0"),
-                                                 (T - 0.3, "opacity:0"), (T - 0.299, "opacity:1"), (T, "opacity:1")])
-        parts.append(f'<g class="{cls}"{"" if k == K - 1 else HIDE}>{mono(x0, by + 4, line, 11, MUTED)}</g>')
+        s_ = k / (K - 1)
+        n = round(1000 * s_)
+        el, rem = s_ * total_time, (1000 - n) / rate
+        blocks = s_ * 24
+        bar = ("█" * int(blocks) + (" ▏▎▍▌▋▊▉"[int((blocks % 1) * 8)] if blocks < 24 else "")).ljust(24)
+        line = f"sampling {int(s_ * 100):3d}%|{bar}| {n:4d}/1000 [00:{int(el):02d}<00:{int(math.ceil(rem)):02d}, {rate:.2f}it/s]"
+        on = starts[k]
+        last = k == K - 1
+        cls = tl.show(on, fade=0.01) if last else tl.pulse(on, starts[k + 1])
+        if k == 0:
+            cls = tl.kf([(0, "opacity:1"), (starts[1], "opacity:1"), (starts[1] + 0.001, "opacity:0"), (tl.end, "opacity:0")])
+        parts.append(f'<g class="{cls}"{"" if last else HIDE}>{mono(x0, by + 4, line, 11, MUTED)}</g>')
 
     ty = by + 36
-    parts.append(f'<g class="{tl.show(0.3 + K * step, fade=0.5)}">'
+    parts.append(f'<g class="{tl.show(done + 0.1, fade=0.6)}">'
                  f'{mono(x0, ty, "Miaad Kimiagari", 16, FG, weight="700")}'
                  f'{mono(x0 + 17 * 16 * CHAR, ty, "Computer Engineering, University of Isfahan", 13, MUTED)}</g>')
     defs = grad("hg", x0, W - x0) + glow("bloom", 1.4)

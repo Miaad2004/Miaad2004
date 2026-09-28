@@ -106,15 +106,14 @@ def summarize(data, today):
 
 def neofetch_svg(s):
     W, H = 880, 420
-    tl = Timeline(18.0, "n")
+    tl = Timeline(18.0, "n", end=4.4)  # the readout types in once; only the logo, focus and cursor keep moving
     parts = [mono(28, 62, "$ ", 14, GREEN), mono(28 + 2 * 14 * CHAR, 62, "neofetch", 14, FG)]
 
     # logo: Game of Life seeded with the name
     cols, rows, fs, lh = 42, 29, 10, 10.2
     lx, ly = 30, 92
-    gens, fps, hold = 72, 9, 1.4
-    life = Timeline(0.3 + hold + (gens - 1) / fps + 0.6, "g")
-    frames, _ = life_frames("ng", lx, ly, cols, rows, fs, lh, gens, fps, hold, life)
+    gens, fps, hold = 72, 12, 1.6
+    frames, life = life_frames("ng", lx, ly, cols, rows, fs, lh, gens, fps, hold)
     parts.append(frames)
 
     x, FS, kw = 312, 13, 11
@@ -134,11 +133,11 @@ def neofetch_svg(s):
     def count_row(k, n, suffix, y, at):
         """The number rolls up from 0 before settling."""
         parts.append(f'<g class="{tl.show(at, fade=0.1)}">{key(k, y, at)}</g>')
-        steps = 12
+        steps = 16
         for i in range(steps + 1):
-            v = round(n * (i / steps) ** 0.6)
-            t0 = at + i * 0.07
-            cls = tl.show(t0, fade=0.01) if i == steps else tl.pulse(t0, t0 + 0.07)
+            v = round(n * (1 - (1 - i / steps) ** 3))
+            t0 = at + i * 0.05
+            cls = tl.show(t0, fade=0.01) if i == steps else tl.pulse(t0, t0 + 0.05)
             rest = "" if i == steps else HIDE
             parts.append(f'<g class="{cls}"{rest}>{mono(vx, y, f"{v}{suffix}", FS, FG)}</g>')
 
@@ -151,9 +150,9 @@ def neofetch_svg(s):
     row("Top repo", s["top"], y, at); y += 20; at += 0.08
 
     # latest push with a live pulse
-    ring = Timeline(1.8, "r")
-    rc = ring.kf([(0, "transform:scale(1);opacity:0.7"), (1.2, "transform:scale(2.6);opacity:0"),
-                  (1.8, "transform:scale(2.6);opacity:0")], timing="ease-out")
+    ring = Timeline(4.0, "r")
+    rc = ring.kf([(0, "transform:scale(1);opacity:0.6"), (1.4, "transform:scale(2.6);opacity:0"),
+                  (4.0, "transform:scale(2.6);opacity:0")], timing="ease-out")
     parts.append(f'<g class="{tl.show(at, fade=0.1)}">{key("Latest", y, at)}'
                  f'<g transform="translate({vx + 5} {y - 4.5})"><circle r="4" fill="{GREEN}"/>'
                  f'<circle r="4" fill="none" stroke="{GREEN}" class="{rc}" style="transform-box:fill-box;transform-origin:center"/></g>'
@@ -196,10 +195,9 @@ def neofetch_svg(s):
                  '</linearGradient></defs>')
     grow = tl.kf([(0, "transform:scaleX(0)"), (at + 0.1, "transform:scaleX(0)"), (at + 1.1, "transform:scaleX(1)"),
                   (tl.T, "transform:scaleX(1)")], timing="ease-out")
-    sweep = tl.kf([(0, "transform:translateX(-80px)"), (at + 1.4, "transform:translateX(-80px)"),
-                   (at + 2.4, f"transform:translateX({bw + 80}px)"), (9.0, "transform:translateX(-80px)"),
-                   (13.0, "transform:translateX(-80px)"), (14.0, f"transform:translateX({bw + 80}px)"),
-                   (tl.T, f"transform:translateX({bw + 80}px)")], timing="ease-in-out")
+    sweep = tl.kf([(0, "transform:translateX(-80px)"), (at + 1.2, "transform:translateX(-80px)"),
+                   (at + 2.4, f"transform:translateX({bw + 80}px)"), (tl.T, f"transform:translateX({bw + 80}px)")],
+                  timing="ease-in-out")
     bar = [f'<g clip-path="url(#bar)"><g class="{grow}" style="transform-origin:{vx}px 0">']
     cx = vx
     for name, p, col in segs:
@@ -215,14 +213,13 @@ def neofetch_svg(s):
                      f'{mono(lx_ + 13, ly_, f"{name} {p * 100:.0f}%", 11, MUTED)}</g>')
     y += 34
 
-    # the classic colour blocks, rippling
-    wave = Timeline(2.4, "w")
+    # the classic colour blocks, with one ripple as they land
     blocks = []
     for i, c in enumerate(["#1b1f24", CORAL, GREEN, YELLOW, BLUE, VIOLET, "#39c5cf", FG]):
-        t0 = i * 0.12
-        cls = wave.kf([(0, "transform:translateY(0)"), (t0, "transform:translateY(0)"),
-                       (t0 + 0.25, "transform:translateY(-4px)"), (t0 + 0.5, "transform:translateY(0)"),
-                       (2.4, "transform:translateY(0)")], timing="ease-in-out")
+        t0 = at + 1.7 + i * 0.07
+        cls = tl.kf([(0, "transform:translateY(0)"), (t0, "transform:translateY(0)"),
+                     (t0 + 0.25, "transform:translateY(-4px)"), (t0 + 0.5, "transform:translateY(0)"),
+                     (tl.T, "transform:translateY(0)")], timing="ease-in-out")
         blocks.append(f'<rect x="{vx + i * 26}" y="{y}" width="26" height="12" fill="{c}" class="{cls}"/>')
     parts.append(f'<g class="{tl.show(at + 1.6, fade=0.2)}">{"".join(blocks)}</g>')
 
@@ -230,7 +227,8 @@ def neofetch_svg(s):
     py_ = H - 22
     parts.append(f'<g class="{tl.show(at + 2.0, fade=0.05)}">{mono(x, py_, "$", 14, GREEN)}'
                  f'<rect x="{x + 2 * 14 * CHAR:.1f}" y="{py_ - 13}" width="{14 * CHAR:.1f}" height="16" fill="{FG}" class="cur"/></g>')
-    css = (tl.css() + life.css() + focus.css() + ring.css() + wave.css() +
+    assert at + 2.6 <= tl.end, "neofetch readout runs past its once-only timeline"
+    css = (tl.css() + life.css() + focus.css() + ring.css() +
            ".cur{animation:blink 1.06s steps(1) infinite}@keyframes blink{50%{opacity:0}}")
     label = (f"neofetch for {LOGIN}, next to Conway's Game of Life seeded with the name MIAAD: uptime {s['uptime']}, "
              f"{s['repos']} public repos, {s['stars']} stars, {s['followers']} followers; languages "
