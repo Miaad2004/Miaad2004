@@ -760,7 +760,7 @@ def card_sudoku():
                 *HTML, "\n".join(parts), tl.css(), "A Sudoku grid fills itself in, cell by cell, as the backtracking solver places digits.")
 
 
-CARDS = [("more/selfdrive", card_selfdrive), ("more/siamese", card_siamese), ("more/packets", card_packets),
-         ("more/puzzle", card_puzzle), ("more/candy", card_candy), ("more/hogwarts", card_hogwarts),
+CARDS = [("selfdrive", card_selfdrive), ("siamese", card_siamese), ("more/packets", card_packets),
+         ("puzzle", card_puzzle), ("candy", card_candy), ("more/hogwarts", card_hogwarts),
          ("more/social", card_social), ("more/linuxfs", card_linuxfs), ("more/calc", card_calc),
-         ("more/bst", card_bst), ("more/kmeans", card_kmeans), ("more/sudoku", card_sudoku)]
+         ("more/bst", card_bst), ("more/kmeans", card_kmeans), ("sudoku", card_sudoku)]

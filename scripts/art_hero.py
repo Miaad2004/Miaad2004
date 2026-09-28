@@ -4,16 +4,35 @@ The glyphs come from a rasterised bold font, shaded with a directional light so 
 embossed, then quantised onto a fine ASCII ramp. Needs numpy + Pillow (only when rendering the art).
 """
 import math
+import os
 
 from svgkit import BORDER, CHAR, FG, GREEN, HIDE, MUTED, Timeline, glow, grad, mono, window
 
 RAMP = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FONTS = [
+    os.environ.get("HERO_FONT", ""),  # set this to any bold .ttf to override
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # what the committed hero was rendered with
+    "/Library/Fonts/DejaVuSans-Bold.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+    "DejaVuSans-Bold.ttf",  # bare name: Pillow also searches the system font folders
+]
+
+
+def load_font(size):
+    from PIL import ImageFont
+
+    for path in filter(None, FONTS):
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    raise SystemExit("no bold TrueType font found for the hero; set HERO_FONT=/path/to/font.ttf")
 
 
 def name_field(cols, rows, cw, lh, word="MIAAD"):
     import numpy as np
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     sx = 10  # supersampling per character column
     W, Hh = cols * sx, int(rows * sx * lh / cw)
@@ -21,7 +40,7 @@ def name_field(cols, rows, cw, lh, word="MIAAD"):
     d = ImageDraw.Draw(img)
     size = int(Hh * 1.02)
     while True:
-        f = ImageFont.truetype(FONT, size)
+        f = load_font(size)
         l, t, r, b = d.textbbox((0, 0), word, font=f)
         if r - l <= W * 0.97 and b - t <= Hh * 0.86:
             break

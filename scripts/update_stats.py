@@ -24,13 +24,13 @@ ASSETS = os.path.join(HERE, "..", "assets")
 README = os.path.join(HERE, "..", "README.md")
 
 QUERY = """
-query($login: String!) {
+query($login: String!, $after: String) {
   user(login: $login) {
     createdAt
     followers { totalCount }
-    repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, isFork: false,
+    repositories(first: 100, after: $after, ownerAffiliations: OWNER, privacy: PUBLIC, isFork: false,
                  orderBy: {field: PUSHED_AT, direction: DESC}) {
-      totalCount
+      pageInfo { hasNextPage endCursor }
       nodes {
         name
         stargazerCount
@@ -47,17 +47,25 @@ COLORS = {"Python": "#3572A5"}
 
 
 def fetch_github(token):
-    req = urllib.request.Request(
-        "https://api.github.com/graphql",
-        data=json.dumps({"query": QUERY, "variables": {"login": LOGIN}}).encode(),
-        headers={"Authorization": f"bearer {token}", "Content-Type": "application/json", "User-Agent": LOGIN},
-    )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        payload = json.load(r)
-    if "errors" in payload:
-        raise SystemExit(f"GraphQL error: {payload['errors']}")
-    u = payload["data"]["user"]
-    repos = [r for r in u["repositories"]["nodes"] if r["name"] != LOGIN]
+    def page(after):
+        req = urllib.request.Request(
+            "https://api.github.com/graphql",
+            data=json.dumps({"query": QUERY, "variables": {"login": LOGIN, "after": after}}).encode(),
+            headers={"Authorization": f"bearer {token}", "Content-Type": "application/json", "User-Agent": LOGIN},
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            payload = json.load(r)
+        if "errors" in payload:
+            raise SystemExit(f"GraphQL error: {payload['errors']}")
+        return payload["data"]["user"]
+
+    u = page(None)
+    nodes, info = list(u["repositories"]["nodes"]), u["repositories"]["pageInfo"]
+    while info["hasNextPage"]:
+        conn = page(info["endCursor"])["repositories"]
+        nodes += conn["nodes"]
+        info = conn["pageInfo"]
+    repos = [r for r in nodes if r["name"] != LOGIN]
     return {
         "created_at": u["createdAt"],
         "followers": u["followers"]["totalCount"],
